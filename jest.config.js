@@ -78,6 +78,7 @@ module.exports = {
     ]),
     project('node plugins', [
       'delivery-node',
+      'plugin-aws-lambda',
       'plugin-express',
       'plugin-koa',
       'plugin-restify',
