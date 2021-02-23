@@ -132,4 +132,70 @@ describe('plugin: aws lambda', () => {
 
     expect(client._notify).toHaveBeenCalledWith(createExpectedEvent(error))
   })
+
+  it('works when an async handler has the callback parameter', async () => {
+    const handler = async (event: any, context: any, callback: any) => 'abcxyz'
+
+    const client = createClientMock()
+
+    const event = { very: 'eventy' }
+    const context = { extremely: 'contextual' }
+
+    const { createHandler } = Plugin.load(client)
+    const wrappedHandler = createHandler()(handler)
+
+    expect(await wrappedHandler(event, context)).toBe('abcxyz')
+  })
+
+  it('works when an async handler has the callback parameter and calls it', async () => {
+    const handler = async (event: any, context: any, callback: any) => { callback(null, 'abcxyz') }
+
+    const client = createClientMock()
+
+    const event = { very: 'eventy' }
+    const context = { extremely: 'contextual' }
+
+    const { createHandler } = Plugin.load(client)
+    const wrappedHandler = createHandler()(handler)
+
+    expect(await wrappedHandler(event, context)).toBe('abcxyz')
+  })
+
+  it('works when an async handler has the callback parameter and throws', async () => {
+    const error = new Error('abcxyz')
+    const handler = async (event: any, context: any, callback: any) => { throw error }
+
+    const client = createClientMock()
+
+    const event = { very: 'eventy' }
+    const context = { extremely: 'contextual' }
+
+    const { createHandler } = Plugin.load(client)
+    const wrappedHandler = createHandler()(handler)
+
+    expect(client._notify).not.toHaveBeenCalled()
+
+    await expect(() => wrappedHandler(event, context)).rejects.toThrow(error)
+
+    expect(client._notify).toHaveBeenCalledWith(createExpectedEvent(error))
+  })
+
+  it('works when an async handler has the callback parameter and calls it with an error', async () => {
+    const error = new Error('abcxyz')
+    const handler = async (event: any, context: any, callback: any) => { callback(error) }
+
+    const client = createClientMock()
+
+    const event = { very: 'eventy' }
+    const context = { extremely: 'contextual' }
+
+    const { createHandler } = Plugin.load(client)
+    const wrappedHandler = createHandler()(handler)
+
+    expect(client._notify).not.toHaveBeenCalled()
+
+    await expect(() => wrappedHandler(event, context)).rejects.toThrow(error)
+
+    expect(client._notify).toHaveBeenCalledWith(createExpectedEvent(error))
+  })
 })

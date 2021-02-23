@@ -46,7 +46,7 @@ function wrapHandler (client, flushTimeoutMs, handler) {
 function promisifyHandler (handler) {
   return function (event, context) {
     return new Promise(function (resolve, reject) {
-      handler(event, context, function (err, response) {
+      const result = handler(event, context, function (err, response) {
         if (err) {
           reject(err)
           return
@@ -54,8 +54,21 @@ function promisifyHandler (handler) {
 
         resolve(response)
       })
+
+      // Handle an edge case where the passed handler has the callback parameter
+      // but actually returns a promise. In this case we need to resolve/reject
+      // based on the returned promise instead of in the callback
+      if (isPromise(result)) {
+        result.then(resolve).catch(reject)
+      }
     })
   }
+}
+
+function isPromise (value) {
+  return (typeof value === 'object' || typeof value === 'function') &&
+    typeof value.then === 'function' &&
+    typeof value.catch === 'function'
 }
 
 module.exports = BugsnagPluginAwsLambda
