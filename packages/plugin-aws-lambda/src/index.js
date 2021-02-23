@@ -37,7 +37,11 @@ function wrapHandler (client, flushTimeoutMs, handler) {
 
       throw err
     } finally {
-      await client._delivery._flush(flushTimeoutMs)
+      try {
+        await client._delivery._flush(flushTimeoutMs)
+      } catch (err) {
+        client._logger.error(`Delivery may be unsuccessful: ${err.message}`)
+      }
     }
   }
 }

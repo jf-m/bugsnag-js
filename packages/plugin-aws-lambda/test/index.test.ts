@@ -14,7 +14,10 @@ const createClientMock = (): Client => ({
   Event,
   _notify: jest.fn(),
   addMetadata: jest.fn(),
-  _delivery: createDeliveryMock()
+  _delivery: createDeliveryMock(),
+  _logger: {
+    error: jest.fn()
+  }
 } as unknown as Client)
 
 const createExpectedEvent = (error: Error): Event => {
@@ -67,6 +70,22 @@ describe('plugin: aws lambda', () => {
 
     expect(handler).toHaveBeenNthCalledWith(1, event, context)
     expect(handler).toHaveBeenNthCalledWith(2, flushTimeoutMs)
+  })
+
+  it('logs an error if flush times out', async () => {
+    const handler = () => 'abc'
+
+    const client = createClientMock()
+
+    const timeoutError = new Error('_flush timed out after 2000ms')
+    const flush = (client._delivery as NodeDelivery)._flush
+    ;(flush as jest.MockedFunction<typeof flush>).mockRejectedValue(timeoutError)
+
+    const { createHandler } = Plugin.load(client)
+    const wrappedHandler = createHandler()(handler)
+
+    expect(await wrappedHandler()).toBe('abc')
+    expect(client._logger.error).toHaveBeenCalledWith('Delivery may be unsuccessful: _flush timed out after 2000ms')
   })
 
   it('returns a wrapped handler that resolves to the original return value (async)', async () => {
